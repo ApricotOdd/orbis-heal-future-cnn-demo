@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixel Drawer 32x32 + CNN Side Panel</title>
+  <style>
+    :root {
+      --panel: #efefef;
+      --panel-border-dark: #6b6b6b;
+      --panel-border-light: #ffffff;
+      --title: #003c74;
+      --title-text: #ffffff;
+      --text: #111111;
+      --muted: #333333;
+      --btn: #dcdcdc;
+      --btn-dark: #808080;
+      --btn-light: #ffffff;
+      --grid-line: rgba(255, 255, 255, 0.2);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Tahoma, Verdana, Arial, sans-serif;
+      color: var(--text);
+      background:
+        repeating-linear-gradient(
+          0deg,
+          #c6c6c6 0px,
+          #c6c6c6 2px,
+          #c0c0c0 2px,
+          #c0c0c0 4px
+        );
+      min-height: 100vh;
+    }
+
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .main-shell {
+      flex: 1 1 auto;
+      min-width: 0;
+      transition: width 0.25s ease;
+    }
+
+    .wrap {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (min-width: 1100px) {
+      .wrap {
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+      }
+    }
+
+    .window {
+      border: 1px solid var(--panel-border-dark);
+      background: var(--panel);
+      box-shadow:
+        inset 1px 1px 0 var(--panel-border-light),
+        inset -1px -1px 0 #a0a0a0;
+    }
+
+    .titlebar {
+      background: var(--title);
+      color: var(--title-text);
+      font-weight: bold;
+      font-size: 13px;
+      padding: 6px 8px;
+      border-bottom: 1px solid #00284e;
+    }
+
+    .content { padding: 10px; }
+
+    .sub {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
+    .canvas-wrap {
+      border: 1px solid #3a3a3a;
+      background: #000;
+      padding: 8px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas.main {
+      display: block;
+      width: 100%;
+      max-width: 640px;
+      aspect-ratio: 1 / 1;
+      height: auto;
+      touch-action: none;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background: #000;
+      border: 1px solid #888;
+    }
+
+    .controls {
+      margin-top: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      border: 1px solid #8b8b8b;
+      background: #f5f5f5;
+      padding: 2px 6px;
+      font-size: 12px;
+      color: #111;
+    }
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #222;
+    }
+
+    input[type="checkbox"] {
+      margin: 0;
+      width: 14px;
+      height: 14px;
+    }
+
+    input[type="range"] { width: 130px; }
+
+    input[type="color"] {
+      width: 38px;
+      height: 28px;
+      border: 1px solid #888;
+      padding: 0;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    select {
+      font-size: 12px;
+      padding: 2px 4px;
+      border: 1px solid #888;
+      background: #fff;
+    }
+
+    .value {
+      min-width: 28px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 12px;
+      display: inline-block;
+    }
+
+    .rgb-readout {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #888;
+      background: #fff;
+      padding: 3px 6px;
+      font-size: 12px;
+    }
+
+    .rgb-readout .r { color: #b00000; font-weight: bold; }
+    .rgb-readout .g { color: #007a00; font-weight: bold; }
+    .rgb-readout .b { color: #0044c4; font-weight: bold; }
+
+    .btn {
+      border: 1px solid var(--btn-dark);
+      background: var(--btn);
+      color: #111;
+      font-size: 12px;
+      padding: 5px 8px;
+      cursor: pointer;
+      box-shadow: inset 1px 1px 0 var(--btn-light), inset -1px -1px 0 #9c9c9c;
+    }
+
+    .btn:active {
+      box-shadow: inset -1px -1px 0 var(--btn-light), inset 1px 1px 0 #9c9c9c;
+      transform: translateY(1px);
+    }
+
+    .btn.primary { border-color: #2a6b33; color: #083b10; }
+    .btn.danger { border-color: #8b2c2c; color: #4f0d0d; }
+
+    .tiny {
+      font-size: 12px;
+      color: #333;
+      margin: 0;
+    }
+
+    .matrix-wrap {
+      border: 1px solid #3a3a3a;
+      background: #111;
+      padding: 8px;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .matrix {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: grid;
+      grid-template-columns: repeat(32, 1fr);
+      grid-template-rows: repeat(32, 1fr);
+      border: 1px solid #3b3b3b;
+      background: #000;
+    }
+
+    .mcell {
+      border-right: 1px solid #2c2c2c;
+      border-bottom: 1px solid #2c2c2c;
+      display: grid;
+      place-items: center;
+      font-family: "Courier New", monospace;
+      font-size: 7px;
+      line-height: 1;
+      user-select: none;
+      background: #000;
+      color: #e8e8e8;
+      text-align: center;
+      padding: 0 1px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .mcell.view-rgb,
+    .mcell.view-rg,
+    .mcell.view-rb,
+    .mcell.view-gb {
+      font-size: 6px;
+    }
+
+    @media (min-width: 1200px) {
+      .mcell { font-size: 8px; }
+      .mcell.view-rgb,
+      .mcell.view-rg,
+      .mcell.view-rb,
+      .mcell.view-gb {
+        font-size: 7px;
+      }
+    }
+
+    .mcell .r { color: #ff4c4c; font-weight: bold; }
+    .mcell .g { color: #52ff52; font-weight: bold; }
+    .mcell .b { color: #66a8ff; font-weight: bold; }
+
+    .hidden { display: none; }
+
+    .channel-previews {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    @media (min-width: 700px) {
+      .channel-previews { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .chan-card {
+      border: 1px solid #666;
+      background: #151515;
+      padding: 6px;
+    }
+
+    .chan-title {
+      margin: 0 0 5px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #ddd;
+    }
+
+    .chan-title.red { color: #ff5b5b; }
+    .chan-title.green { color: #58ff58; }
+    .chan-title.blue { color: #71acff; }
+
+    canvas.chan {
+      width: 100%;
+      aspect-ratio: 1/1;
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      border: 1px solid #444;
+      background: #000;
+    }
+
+    /* CNN side column */
+    .cnn-column {
+      width: 0;
+      flex: 0 0 auto;
+      overflow: hidden;
+      transition: width 0.25s ease;
+      border-left: 0 solid #6b6b6b;
+    }
+
+    .app-shell.cnn-open .cnn-column {
+      width: 460px;
+      border-left-width: 1px;
+    }
+
+    @media (max-width: 1350px) {
+      .app-shell.cnn-open .cnn-column { width: 400px; }
+    }
+
+    @media (max-width: 960px) {
+      .app-shell.cnn-open .cnn-column { width: 100vw; }
+    }
+
+    .cnn-inner {
+      height: 100vh;
+      overflow: auto;
+      background: var(--panel);
+      border-left: 1px solid var(--panel-border-light);
+    }
+
+    .cnn-titlebar {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--title);
+      color: var(--title-text);
+      font-weight: bold;
+      font-size: 13px;
+      padding: 6px 8px;
+      border-bottom: 1px solid #00284e;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cnn-close {
+      border: 1px solid #7ea3c9;
+      background: #1a5a95;
+      color: #fff;
+      cursor: pointer;
+      padding: 2px 7px;
+      font-size: 12px;
+    }
+
+    .cnn-body {
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .cnn-controls {
+      border: 1px solid #9ba8b7;
+      background: #fff;
+      padding: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .cnn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    @media (max-width: 560px) {
+      .cnn-row { grid-template-columns: 1fr; }
+    }
+
+    .cnn-card {
+      border: 1px solid #8fa3b7;
+      background: #fff;
+      padding: 6px;
+    }
+
+    .cnn-card p {
+      margin: 0 0 6px;
+      font-size: 12px;
+      color: #223;
+      font-weight: bold;
+    }
+
+    .cnn-canvas {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border: 1px solid #666;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background: #000;
+      display: block;
+    }
+
+    .kernel-grid {
+      display: grid;
+      gap: 2px;
+      width: max-content;
+      background: #f3f6fb;
+      border: 1px solid #9fb0c1;
+      padding: 4px;
+      margin-top: 4px;
+    }
+
+    .kcell {
+      width: 34px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #bcc8d5;
+      background: #fff;
+      font-size: 11px;
+      font-family: Consolas, monospace;
+    }
+
+    .cnn-status {
+      border: 1px solid #9fb0c1;
+      background: #f6f9fd;
+      padding: 6px;
+      font-size: 12px;
+      color: #1c2d40;
+    }
+
+    .prob-wrap { display: grid; gap: 6px; }
+
+    .prob-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 44px;
+      gap: 6px;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .prob-track {
+      height: 10px;
+      border: 1px solid #94a5b9;
+      background: #edf3fb;
+    }
+
+    .prob-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #1f73be, #2ca24f);
+    }
+
+    .cnn-toggle-dock {
+      position: fixed;
+      right: 12px;
+      top: 12px;
+      z-index: 10;
+      border: 1px solid #2e5c89;
+      background: #0a467e;
+      color: #fff;
+      font-size: 12px;
+      padding: 7px 10px;
+      cursor: pointer;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.3);
+    }
+
+    .small-note {
+      margin: 0;
+      font-size: 12px;
+      color: #314256;
+    }
+  </style>
+</head>
+<body>
+  <button class="cnn-toggle-dock" id="cnnToggleDock">Open CNN Panel</button>
+
+  <div class="app-shell" id="appShell">
+    <div class="main-shell">
+      <main class="wrap">
+        <section class="window">
+          <div class="titlebar">Pixel Drawer - 32x32</div>
+          <div class="content">
+            <p class="sub">Left click/touch = paint. Right click = erase. RGB mode supports full 3-channel painting.</p>
+
+            <div class="canvas-wrap">
+              <canvas class="main" id="gridCanvas" width="512" height="512" aria-label="32 by 32 drawing grid"></canvas>
+            </div>
+
+            <div class="controls">
+              <div class="row">
+                <span class="badge">GRID: 32x32</span>
+                <span class="badge">HARD BRUSH: 1x1</span>
+                <span class="badge">VALUE RANGE: 0..255 / channel</span>
+              </div>
+
+              <div class="row">
+                <label>Mode:
+                  <select id="modeSelect">
+                    <option value="gray">Grayscale (1 channel)</option>
+                    <option value="rgb" selected>Color RGB</option>
+                  </select>
+                </label>
+
+                <label><input id="softBrush" type="checkbox" /> Soft brush</label>
+
+                <label>Soft size:
+                  <input id="brushSize" type="range" min="1" max="9" step="2" value="3" />
+                  <span class="value" id="brushSizeVal">3</span>
+                </label>
+
+                <label>Strength:
+                  <input id="strength" type="range" min="1" max="64" step="1" value="20" />
+                  <span class="value" id="strengthVal">20</span>
+                </label>
+              </div>
+
+              <div class="row hidden" id="grayControls">
+                <label>Gray paint value:
+                  <input id="grayValue" type="range" min="0" max="255" step="1" value="255" />
+                  <span class="value" id="grayValueVal">255</span>
+                </label>
+              </div>
+
+              <div class="row" id="rgbControls">
+                <label>Color picker:
+                  <input id="rgbPicker" type="color" value="#ffffff" />
+                </label>
+
+                <div class="rgb-readout">
+                  <span class="r">R: <span id="rValueVal">255</span></span>
+                  <span class="g">G: <span id="gValueVal">255</span></span>
+                  <span class="b">B: <span id="bValueVal">255</span></span>
+                </div>
+              </div>
+
+              <div class="row">
+                <label><input id="showGrid" type="checkbox" checked /> Show drawer grid lines</label>
+              </div>
+
+              <div class="row">
+                <button class="btn" id="copyBtn">Copy Text Grid</button>
+                <button class="btn danger" id="clearBtn">Clear Current Mode</button>
+              </div>
+
+              <p class="tiny">All numeric displays are channel values in the range 0..255.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="window">
+          <div class="titlebar">32x32 Number Grid + Channel Views</div>
+          <div class="content">
+            <div class="row" style="margin-bottom:8px;">
+              <label>Grid view:
+                <select id="gridView">
+                  <option value="rgb">R,G,B (0..255)</option>
+                  <option value="r">R only</option>
+                  <option value="g">G only</option>
+                  <option value="b">B only</option>
+                  <option value="rg">R,G</option>
+                  <option value="rb">R,B</option>
+                  <option value="gb">G,B</option>
+                  <option value="gray">Gray channel only</option>
+                </select>
+              </label>
+            </div>
+
+            <p class="sub" style="margin-top:0;">All cell numbers are shown in 0..255 channel values only.</p>
+
+            <div class="matrix-wrap">
+              <div id="matrix" class="matrix" aria-label="32 by 32 numeric grid"></div>
+            </div>
+
+            <div class="channel-previews">
+              <div class="chan-card">
+                <p class="chan-title red">Red channel preview</p>
+                <canvas class="chan" id="rCanvas" width="256" height="256"></canvas>
+              </div>
+              <div class="chan-card">
+                <p class="chan-title green">Green channel preview</p>
+                <canvas class="chan" id="gCanvas" width="256" height="256"></canvas>
+              </div>
+              <div class="chan-card">
+                <p class="chan-title blue">Blue channel preview</p>
+                <canvas class="chan" id="bCanvas" width="256" height="256"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <aside class="cnn-column" id="cnnColumn">
+      <div class="cnn-inner">
+        <div class="cnn-titlebar">
+          <span>CNN Analyzer (32x32)</span>
+          <button class="cnn-close" id="cnnCloseBtn">Close</button>
+        </div>
+
+        <div class="cnn-body">
+          <div class="cnn-controls">
+            <label>Kernel preset:
+              <select id="cnnKernelSelect">
+                <option value="sobelX">Sobel X (vertical edges)</option>
+                <option value="sobelY">Sobel Y (horizontal edges)</option>
+                <option value="laplacian">Laplacian (all-direction edges)</option>
+                <option value="circleEdge">Circle/Ring edge detector</option>
+                <option value="sharpen">Sharpen</option>
+                <option value="blur">Blur</option>
+              </select>
+            </label>
+            <p class="small-note">Auto-analyze: ON • Normalize conv view: ON</p>
+          </div>
+
+          <div class="cnn-row">
+            <div class="cnn-card">
+              <p>Input (single-channel used by CNN)</p>
+              <canvas class="cnn-canvas" id="cnnInputCanvas" width="256" height="256"></canvas>
+            </div>
+            <div class="cnn-card">
+              <p>Convolution output (normalized)</p>
+              <canvas class="cnn-canvas" id="cnnConvCanvas" width="256" height="256"></canvas>
+            </div>
+          </div>
+
+          <div class="cnn-row">
+            <div class="cnn-card">
+              <p>ReLU output</p>
+              <canvas class="cnn-canvas" id="cnnReluCanvas" width="256" height="256"></canvas>
+            </div>
+            <div class="cnn-card">
+              <p>MaxPool \(2 \times 2\) output</p>
+              <canvas class="cnn-canvas" id="cnnPoolCanvas" width="256" height="256"></canvas>
+            </div>
+          </div>
+
+          <div class="cnn-row">
+            <div class="cnn-card">
+              <p>Kernel values</p>
+              <div id="cnnKernelGrid" class="kernel-grid"></div>
+              <p id="cnnKernelDesc" style="margin-top:6px; font-weight:normal; color:#334; font-size:12px;"></p>
+            </div>
+            <div class="cnn-card">
+              <p>Dense + Softmax (demo classes)</p>
+              <div class="prob-wrap">
+                <div class="prob-row">
+                  <span>No edge</span>
+                  <div class="prob-track"><div class="prob-fill" id="p0"></div></div>
+                  <span id="t0">0%</span>
+                </div>
+                <div class="prob-row">
+                  <span>Edge</span>
+                  <div class="prob-track"><div class="prob-fill" id="p1"></div></div>
+                  <span id="t1">0%</span>
+                </div>
+                <div class="prob-row">
+                  <span>Circle-like</span>
+                  <div class="prob-track"><div class="prob-fill" id="p2"></div></div>
+                  <span id="t2">0%</span>
+                </div>
+              </div>
+              <p id="cnnPred" style="margin-top:8px; font-size:12px;">Prediction: —</p>
+            </div>
+          </div>
+
+          <div class="cnn-status" id="cnnStatus">
+            Live CNN is active. Draw on the grid to update results.
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    (function () {
+      const GRID = 32;
+      const MAX_VAL = 255;
+
+      const appShell = document.getElementById('appShell');
+      const cnnToggleDock = document.getElementById('cnnToggleDock');
+      const cnnCloseBtn = document.getElementById('cnnCloseBtn');
+
+      const canvas = document.getElementById('gridCanvas');
+      const ctx = canvas.getContext('2d', { alpha: false });
+
+      const rCanvas = document.getElementById('rCanvas');
+      const gCanvas = document.getElementById('gCanvas');
+      const bCanvas = document.getElementById('bCanvas');
+      const rCtx = rCanvas.getContext('2d', { alpha: false });
+      const gCtx = gCanvas.getContext('2d', { alpha: false });
+      const bCtx = bCanvas.getContext('2d', { alpha: false });
+
+      const modeSelect = document.getElementById('modeSelect');
+      const gridView = document.getElementById('gridView');
+
+      const showGridCheckbox = document.getElementById('showGrid');
+      const softBrushCheckbox = document.getElementById('softBrush');
+      const brushSizeInput = document.getElementById('brushSize');
+      const strengthInput = document.getElementById('strength');
+
+      const grayControls = document.getElementById('grayControls');
+      const rgbControls = document.getElementById('rgbControls');
+
+      const grayValue = document.getElementById('grayValue');
+      const rgbPicker = document.getElementById('rgbPicker');
+
+      const brushSizeVal = document.getElementById('brushSizeVal');
+      const strengthVal = document.getElementById('strengthVal');
+      const grayValueVal = document.getElementById('grayValueVal');
+      const rValueVal = document.getElementById('rValueVal');
+      const gValueVal = document.getElementById('gValueVal');
+      const bValueVal = document.getElementById('bValueVal');
+
+      const clearBtn = document.getElementById('clearBtn');
+      const copyBtn = document.getElementById('copyBtn');
+      const matrixEl = document.getElementById('matrix');
+
+      const grayData = Array.from({ length: GRID }, () => Array(GRID).fill(0));
+      const rData = Array.from({ length: GRID }, () => Array(GRID).fill(0));
+      const gData = Array.from({ length: GRID }, () => Array(GRID).fill(0));
+      const bData = Array.from({ length: GRID }, () => Array(GRID).fill(0));
+
+      let isPointerDown = false;
+      let eraseMode = false;
+      let pickerRGB = { r: 255, g: 255, b: 255 };
+
+      const matrixCells = [];
+      for (let y = 0; y < GRID; y++) {
+        for (let x = 0; x < GRID; x++) {
+          const d = document.createElement('div');
+          d.className = 'mcell';
+          d.textContent = '0';
+          matrixEl.appendChild(d);
+          matrixCells.push(d);
+        }
+      }
+
+      function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
+      }
+
+      function hexToRgb(hex) {
+        const clean = hex.replace('#', '').trim();
+        if (clean.length !== 6) return { r: 255, g: 255, b: 255 };
+        return {
+          r: parseInt(clean.slice(0, 2), 16),
+          g: parseInt(clean.slice(2, 4), 16),
+          b: parseInt(clean.slice(4, 6), 16)
+        };
+      }
+
+      function getCellFromEvent(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        return {
+          cx: clamp(Math.floor(x * GRID), 0, GRID - 1),
+          cy: clamp(Math.floor(y * GRID), 0, GRID - 1)
+        };
+      }
+
+      function addGray(x, y, delta) {
+        if (x < 0 || x >= GRID || y < 0 || y >= GRID) return;
+        grayData[y][x] = clamp(grayData[y][x] + delta, 0, MAX_VAL);
+      }
+
+      function addRGB(x, y, dr, dg, db) {
+        if (x < 0 || x >= GRID || y < 0 || y >= GRID) return;
+        rData[y][x] = clamp(rData[y][x] + dr, 0, MAX_VAL);
+        gData[y][x] = clamp(gData[y][x] + dg, 0, MAX_VAL);
+        bData[y][x] = clamp(bData[y][x] + db, 0, MAX_VAL);
+      }
+
+      function paintAt(cx, cy, isErase) {
+        const mode = modeSelect.value;
+        const soft = softBrushCheckbox.checked;
+        const brushSize = parseInt(brushSizeInput.value, 10);
+        const strength = parseInt(strengthInput.value, 10);
+
+        const rPick = pickerRGB.r;
+        const gPick = pickerRGB.g;
+        const bPick = pickerRGB.b;
+
+        if (!soft) {
+          if (mode === 'gray') {
+            grayData[cy][cx] = isErase ? 0 : parseInt(grayValue.value, 10);
+          } else {
+            if (isErase) {
+              rData[cy][cx] = 0; gData[cy][cx] = 0; bData[cy][cx] = 0;
+            } else {
+              rData[cy][cx] = rPick;
+              gData[cy][cx] = gPick;
+              bData[cy][cx] = bPick;
+            }
+          }
+          return;
+        }
+
+        const radius = Math.max(0.5, brushSize / 2);
+        const reach = Math.ceil(radius);
+
+        for (let y = cy - reach; y <= cy + reach; y++) {
+          for (let x = cx - reach; x <= cx + reach; x++) {
+            if (x < 0 || x >= GRID || y < 0 || y >= GRID) continue;
+            const dx = x - cx;
+            const dy = y - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > radius) continue;
+
+            const t = 1 - dist / radius;
+            const weight = t * t;
+            const baseDelta = Math.max(1, Math.round(weight * strength));
+
+            if (mode === 'gray') {
+              addGray(x, y, isErase ? -baseDelta : baseDelta);
+            } else {
+              if (isErase) {
+                addRGB(x, y, -baseDelta, -baseDelta, -baseDelta);
+              } else {
+                const pr = rPick / MAX_VAL;
+                const pg = gPick / MAX_VAL;
+                const pb = bPick / MAX_VAL;
+                addRGB(
+                  x, y,
+                  Math.round(baseDelta * pr),
+                  Math.round(baseDelta * pg),
+                  Math.round(baseDelta * pb)
+                );
+              }
+            }
+          }
+        }
+      }
+
+      function drawCanvas() {
+        const mode = modeSelect.value;
+        const w = canvas.width;
+        const h = canvas.height;
+        const cellW = w / GRID;
+        const cellH = h / GRID;
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, w, h);
+
+        for (let y = 0; y < GRID; y++) {
+          for (let x = 0; x < GRID; x++) {
+            let rr = 0, gg = 0, bb = 0;
+            if (mode === 'gray') {
+              const g = grayData[y][x];
+              rr = g; gg = g; bb = g;
+            } else {
+              rr = rData[y][x];
+              gg = gData[y][x];
+              bb = bData[y][x];
+            }
+            if (rr === 0 && gg === 0 && bb === 0) continue;
+            ctx.fillStyle = `rgb(${rr},${gg},${bb})`;
+            ctx.fillRect(
+              Math.round(x * cellW),
+              Math.round(y * cellH),
+              Math.ceil(cellW),
+              Math.ceil(cellH)
+            );
+          }
+        }
+
+        if (showGridCheckbox.checked) {
+          ctx.strokeStyle = getComputedStyle(document.documentElement)
+            .getPropertyValue('--grid-line').trim() || 'rgba(255,255,255,0.2)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (let i = 0; i <= GRID; i++) {
+            const px = Math.round(i * cellW) + 0.5;
+            const py = Math.round(i * cellH) + 0.5;
+            ctx.moveTo(px, 0); ctx.lineTo(px, h);
+            ctx.moveTo(0, py); ctx.lineTo(w, py);
+          }
+          ctx.stroke();
+        }
+      }
+
+      function drawSingleChannelPreview(targetCtx, channel) {
+        const w = targetCtx.canvas.width;
+        const h = targetCtx.canvas.height;
+        const cellW = w / GRID;
+        const cellH = h / GRID;
+        targetCtx.fillStyle = '#000';
+        targetCtx.fillRect(0, 0, w, h);
+
+        for (let y = 0; y < GRID; y++) {
+          for (let x = 0; x < GRID; x++) {
+            const r = rData[y][x];
+            const g = gData[y][x];
+            const b = bData[y][x];
+            let rr = 0, gg = 0, bb = 0;
+            if (channel === 'r') rr = r;
+            if (channel === 'g') gg = g;
+            if (channel === 'b') bb = b;
+            if (rr === 0 && gg === 0 && bb === 0) continue;
+            targetCtx.fillStyle = `rgb(${rr},${gg},${bb})`;
+            targetCtx.fillRect(
+              Math.round(x * cellW),
+              Math.round(y * cellH),
+              Math.ceil(cellW),
+              Math.ceil(cellH)
+            );
+          }
+        }
+      }
+
+      function drawChannelPreviews() {
+        drawSingleChannelPreview(rCtx, 'r');
+        drawSingleChannelPreview(gCtx, 'g');
+        drawSingleChannelPreview(bCtx, 'b');
+      }
+
+      function renderCellForView(cell, view, r, g, b, gray) {
+        let br = 0, bg = 0, bb = 0;
+        let html = '';
+
+        cell.className = 'mcell view-' + view;
+
+        if (view === 'gray') {
+          br = gray; bg = gray; bb = gray;
+          html = String(gray);
+        } else if (view === 'r') {
+          br = r;
+          html = `<span class="r">${r}</span>`;
+        } else if (view === 'g') {
+          bg = g;
+          html = `<span class="g">${g}</span>`;
+        } else if (view === 'b') {
+          bb = b;
+          html = `<span class="b">${b}</span>`;
+        } else if (view === 'rg') {
+          br = r; bg = g;
+          html = `<span class="r">${r}</span>,<span class="g">${g}</span>`;
+        } else if (view === 'rb') {
+          br = r; bb = b;
+          html = `<span class="r">${r}</span>,<span class="b">${b}</span>`;
+        } else if (view === 'gb') {
+          bg = g; bb = b;
+          html = `<span class="g">${g}</span>,<span class="b">${b}</span>`;
+        } else {
+          br = r; bg = g; bb = b;
+          html = `<span class="r">${r}</span>,<span class="g">${g}</span>,<span class="b">${b}</span>`;
+        }
+
+        cell.style.backgroundColor = `rgb(${br},${bg},${bb})`;
+        cell.innerHTML = html;
+      }
+
+      function refreshMatrixGrid() {
+        const mode = modeSelect.value;
+        let view = gridView.value;
+        if (mode === 'gray') view = 'gray';
+        if (mode === 'rgb' && view === 'gray') view = 'rgb';
+
+        let idx = 0;
+        for (let y = 0; y < GRID; y++) {
+          for (let x = 0; x < GRID; x++) {
+            renderCellForView(matrixCells[idx++], view, rData[y][x], gData[y][x], bData[y][x], grayData[y][x]);
+          }
+        }
+      }
+
+      function toTextGrid() {
+        const mode = modeSelect.value;
+        if (mode === 'gray') return grayData.map(row => row.join(' ')).join('\n');
+        return rData.map((row, y) =>
+          row.map((_, x) => `${rData[y][x]},${gData[y][x]},${bData[y][x]}`).join(' ')
+        ).join('\n');
+      }
+
+      /* -------- Performance schedulers -------- */
+      let secondaryRAF = 0;
+      let lastSecondaryTs = 0;
+      const SECONDARY_MS = 70;
+
+      function scheduleSecondaryUpdate(force = false) {
+        if (force) {
+          refreshMatrixGrid();
+          drawChannelPreviews();
+          return;
+        }
+        if (secondaryRAF) return;
+        secondaryRAF = requestAnimationFrame((ts) => {
+          secondaryRAF = 0;
+          if (ts - lastSecondaryTs < SECONDARY_MS) {
+            scheduleSecondaryUpdate(false);
+            return;
+          }
+          lastSecondaryTs = ts;
+          refreshMatrixGrid();
+          drawChannelPreviews();
+        });
+      }
+
+      function paintFromEvent(e) {
+        const { cx, cy } = getCellFromEvent(e);
+        paintAt(cx, cy, eraseMode);
+        drawCanvas();
+        scheduleSecondaryUpdate(false);
+        scheduleCnnAnalyze();
+      }
+
+      function startDraw(e) {
+        e.preventDefault();
+        canvas.setPointerCapture(e.pointerId);
+        isPointerDown = true;
+        eraseMode = (e.button === 2);
+        paintFromEvent(e);
+      }
+
+      function moveDraw(e) {
+        if (!isPointerDown) return;
+        e.preventDefault();
+        paintFromEvent(e);
+      }
+
+      function endDraw(e) {
+        if (!isPointerDown) return;
+        isPointerDown = false;
+        try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+        scheduleSecondaryUpdate(true);
+        scheduleCnnAnalyze();
+      }
+
+      function updatePickerReadout() {
+        pickerRGB = hexToRgb(rgbPicker.value);
+        rValueVal.textContent = String(pickerRGB.r);
+        gValueVal.textContent = String(pickerRGB.g);
+        bValueVal.textContent = String(pickerRGB.b);
+      }
+
+      function syncControls(force = true) {
+        const mode = modeSelect.value;
+        brushSizeVal.textContent = brushSizeInput.value;
+        strengthVal.textContent = strengthInput.value;
+        grayValueVal.textContent = grayValue.value;
+        brushSizeInput.disabled = !softBrushCheckbox.checked;
+        grayControls.classList.toggle('hidden', mode !== 'gray');
+        rgbControls.classList.toggle('hidden', mode !== 'rgb');
+        if (mode === 'gray') gridView.value = 'gray';
+        if (mode === 'rgb' && gridView.value === 'gray') gridView.value = 'rgb';
+
+        drawCanvas();
+        scheduleSecondaryUpdate(force);
+        scheduleCnnAnalyze();
+      }
+
+      function clearCurrentMode() {
+        const mode = modeSelect.value;
+        if (mode === 'gray') {
+          for (let y = 0; y < GRID; y++) grayData[y].fill(0);
+        } else {
+          for (let y = 0; y < GRID; y++) {
+            rData[y].fill(0);
+            gData[y].fill(0);
+            bData[y].fill(0);
+          }
+        }
+        drawCanvas();
+        scheduleSecondaryUpdate(true);
+        scheduleCnnAnalyze();
+      }
+
+      /* -------- CNN -------- */
+      const cnn = {
+        kernelSelect: document.getElementById('cnnKernelSelect'),
+        kernelGrid: document.getElementById('cnnKernelGrid'),
+        kernelDesc: document.getElementById('cnnKernelDesc'),
+        statusEl: document.getElementById('cnnStatus'),
+        predEl: document.getElementById('cnnPred'),
+        inCtx: document.getElementById('cnnInputCanvas').getContext('2d', { alpha: false }),
+        convCtx: document.getElementById('cnnConvCanvas').getContext('2d', { alpha: false }),
+        reluCtx: document.getElementById('cnnReluCanvas').getContext('2d', { alpha: false }),
+        poolCtx: document.getElementById('cnnPoolCanvas').getContext('2d', { alpha: false }),
+        p0: document.getElementById('p0'),
+        p1: document.getElementById('p1'),
+        p2: document.getElementById('p2'),
+        t0: document.getElementById('t0'),
+        t1: document.getElementById('t1'),
+        t2: document.getElementById('t2')
+      };
+
+      const kernels = {
+        sobelX: {
+          name: 'Sobel X',
+          desc: 'Detects vertical edges from left/right intensity change.',
+          m: [[1,0,-1],[2,0,-2],[1,0,-1]]
+        },
+        sobelY: {
+          name: 'Sobel Y',
+          desc: 'Detects horizontal edges from top/bottom intensity change.',
+          m: [[1,2,1],[0,0,0],[-1,-2,-1]]
+        },
+        laplacian: {
+          name: 'Laplacian',
+          desc: 'All-direction edge detector.',
+          m: [[0,1,0],[1,-4,1],[0,1,0]]
+        },
+        circleEdge: {
+          name: 'Circle/Ring Edge',
+          desc: 'Ring-like edge emphasis (8-neighbor contrast).',
+          m: [[1,1,1],[1,-8,1],[1,1,1]]
+        },
+        sharpen: {
+          name: 'Sharpen',
+          desc: 'Boosts center and suppresses neighbors.',
+          m: [[0,-1,0],[-1,5,-1],[0,-1,0]]
+        },
+        blur: {
+          name: 'Blur',
+          desc: 'Local averaging filter.',
+          m: [[1/9,1/9,1/9],[1/9,1/9,1/9],[1/9,1/9,1/9]]
+        }
+      };
+
+      function zeros(h, w, fill = 0) {
+        return Array.from({ length: h }, () => Array(w).fill(fill));
+      }
+
+      function toSingleInput() {
+        const mode = modeSelect.value;
+        const out = zeros(GRID, GRID, 0);
+        for (let y = 0; y < GRID; y++) {
+          for (let x = 0; x < GRID; x++) {
+            if (mode === 'gray') out[y][x] = grayData[y][x] / 255;
+            else out[y][x] = (0.2126*rData[y][x] + 0.7152*gData[y][x] + 0.0722*bData[y][x]) / 255;
+          }
+        }
+        return out;
+      }
+
+      function convAt(input, kernel, y, x) {
+        let s = 0;
+        for (let ky = 0; ky < 3; ky++) {
+          for (let kx = 0; kx < 3; kx++) {
+            const yy = y + ky - 1;
+            const xx = x + kx - 1;
+            const v = (yy < 0 || yy >= GRID || xx < 0 || xx >= GRID) ? 0 : input[yy][xx];
+            s += v * kernel[ky][kx];
+          }
+        }
+        return s;
+      }
+
+      function convolve(input, kernel) {
+        const out = zeros(GRID, GRID, 0);
+        for (let y = 0; y < GRID; y++) {
+          for (let x = 0; x < GRID; x++) out[y][x] = convAt(input, kernel, y, x);
+        }
+        return out;
+      }
+
+      function reluMap(m) {
+        const out = zeros(m.length, m[0].length, 0);
+        for (let y = 0; y < m.length; y++) {
+          for (let x = 0; x < m[0].length; x++) out[y][x] = Math.max(0, m[y][x]);
+        }
+        return out;
+      }
+
+      function maxPool2(m) {
+        const out = zeros(16, 16, 0);
+        for (let y = 0; y < 16; y++) {
+          for (let x = 0; x < 16; x++) {
+            const yy = y * 2, xx = x * 2;
+            out[y][x] = Math.max(m[yy][xx], m[yy][xx+1], m[yy+1][xx], m[yy+1][xx+1]);
+          }
+        }
+        return out;
+      }
+
+      function softmax(z) {
+        const m = Math.max(...z);
+        const ex = z.map(v => Math.exp(v - m));
+        const s = ex.reduce((a,b) => a + b, 0);
+        return ex.map(v => v / s);
+      }
+
+      function circleScore(input) {
+        const cx = (GRID - 1) / 2;
+        const cy = (GRID - 1) / 2;
+        let ring = 0, ringN = 0, inr = 0, inN = 0, out = 0, outN = 0;
+        for (let y = 0; y < GRID; y++) {
+          for (let x = 0; x < GRID; x++) {
+            const d = Math.sqrt((x-cx)*(x-cx)+(y-cy)*(y-cy)) / GRID;
+            const v = input[y][x];
+            if (d > 0.22 && d < 0.34) { ring += v; ringN++; }
+            else if (d < 0.16) { inr += v; inN++; }
+            else if (d > 0.42) { out += v; outN++; }
+          }
+        }
+        return (ringN ? ring/ringN : 0) - 0.5 * ((inN ? inr/inN : 0) + (outN ? out/outN : 0));
+      }
+
+      function classify(input, conv, relu) {
+        let meanAbs = 0, meanRelu = 0, maxRelu = 0;
+        const n = GRID * GRID;
+        for (let y = 0; y < GRID; y++) {
+          for (let x = 0; x < GRID; x++) {
+            meanAbs += Math.abs(conv[y][x]);
+            meanRelu += relu[y][x];
+            if (relu[y][x] > maxRelu) maxRelu = relu[y][x];
+          }
+        }
+        meanAbs /= n;
+        meanRelu /= n;
+
+        const c = circleScore(input);
+        const logits = [
+          1.1 - 3.0 * meanAbs - 1.1 * meanRelu,
+          -0.4 + 3.8 * meanAbs + 1.0 * maxRelu,
+          -0.8 + 2.1 * c + 0.8 * meanAbs
+        ];
+        return softmax(logits);
+      }
+
+      function minMax(m) {
+        let mn = Infinity, mx = -Infinity;
+        for (let y = 0; y < m.length; y++) {
+          for (let x = 0; x < m[0].length; x++) {
+            const v = m[y][x];
+            if (v < mn) mn = v;
+            if (v > mx) mx = v;
+          }
+        }
+        if (mn === mx) return { mn: mn - 1e-6, mx: mx + 1e-6 };
+        return { mn, mx };
+      }
+
+      function drawGray(ctx2d, m) {
+        const w = ctx2d.canvas.width;
+        const h = ctx2d.canvas.height;
+        const H = m.length, W = m[0].length;
+        const cw = w / W, ch = h / H;
+        ctx2d.fillStyle = '#000';
+        ctx2d.fillRect(0, 0, w, h);
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            const g = clamp(Math.round(m[y][x] * 255), 0, 255);
+            ctx2d.fillStyle = `rgb(${g},${g},${g})`;
+            ctx2d.fillRect(Math.floor(x*cw), Math.floor(y*ch), Math.ceil(cw), Math.ceil(ch));
+          }
+        }
+      }
+
+      function drawHeat(ctx2d, m) {
+        const w = ctx2d.canvas.width;
+        const h = ctx2d.canvas.height;
+        const H = m.length, W = m[0].length;
+        const cw = w / W, ch = h / H;
+        const { mn, mx } = minMax(m); // always normalized now
+        ctx2d.fillStyle = '#000';
+        ctx2d.fillRect(0, 0, w, h);
+
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            const t = clamp((m[y][x] - mn) / (mx - mn), 0, 1);
+            const hue = (1 - t) * 230;
+            const light = 20 + t * 55;
+            ctx2d.fillStyle = `hsl(${hue}, 85%, ${light}%)`;
+            ctx2d.fillRect(Math.floor(x*cw), Math.floor(y*ch), Math.ceil(cw), Math.ceil(ch));
+          }
+        }
+      }
+
+      function setProbBars(p) {
+        const vals = p.map(v => Math.round(v * 1000) / 10);
+        cnn.p0.style.width = vals[0] + '%';
+        cnn.p1.style.width = vals[1] + '%';
+        cnn.p2.style.width = vals[2] + '%';
+        cnn.t0.textContent = vals[0].toFixed(1) + '%';
+        cnn.t1.textContent = vals[1].toFixed(1) + '%';
+        cnn.t2.textContent = vals[2].toFixed(1) + '%';
+
+        const i = p.indexOf(Math.max(...p));
+        const names = ['No edge', 'Edge', 'Circle-like'];
+        cnn.predEl.textContent = `Prediction: ${names[i]}`;
+      }
+
+      function renderKernelGrid() {
+        const kObj = kernels[cnn.kernelSelect.value];
+        const k = kObj.m;
+        cnn.kernelGrid.innerHTML = '';
+        cnn.kernelGrid.style.gridTemplateColumns = `repeat(${k.length}, 34px)`;
+        for (let y = 0; y < k.length; y++) {
+          for (let x = 0; x < k.length; x++) {
+            const d = document.createElement('div');
+            d.className = 'kcell';
+            const v = k[y][x];
+            d.textContent = Number.isInteger(v) ? String(v) : v.toFixed(2);
+            cnn.kernelGrid.appendChild(d);
+          }
+        }
+        cnn.kernelDesc.textContent = kObj.desc;
+      }
+
+      function cnnAnalyzeNow() {
+        const input = toSingleInput();
+        const kernel = kernels[cnn.kernelSelect.value].m;
+        const conv = convolve(input, kernel);
+        const relu = reluMap(conv);
+        const pool = maxPool2(relu);
+        const probs = classify(input, conv, relu);
+
+        drawGray(cnn.inCtx, input);
+        drawHeat(cnn.convCtx, conv);
+        drawHeat(cnn.reluCtx, relu);
+        drawHeat(cnn.poolCtx, pool);
+        setProbBars(probs);
+        cnn.statusEl.textContent = `Live CNN updated using ${kernels[cnn.kernelSelect.value].name}.`;
+      }
+
+      let cnnRAF = 0;
+      function scheduleCnnAnalyze() {
+        if (cnnRAF) return;
+        cnnRAF = requestAnimationFrame(() => {
+          cnnRAF = 0;
+          cnnAnalyzeNow();
+        });
+      }
+
+      /* -------- Events -------- */
+      canvas.addEventListener('pointerdown', startDraw);
+      canvas.addEventListener('pointermove', moveDraw);
+      canvas.addEventListener('pointerup', endDraw);
+      canvas.addEventListener('pointercancel', endDraw);
+      canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      modeSelect.addEventListener('change', () => syncControls(true));
+      gridView.addEventListener('change', () => scheduleSecondaryUpdate(true));
+      showGridCheckbox.addEventListener('change', drawCanvas);
+      softBrushCheckbox.addEventListener('change', () => syncControls(false));
+      brushSizeInput.addEventListener('input', () => syncControls(false));
+      strengthInput.addEventListener('input', () => syncControls(false));
+      grayValue.addEventListener('input', () => syncControls(false));
+
+      rgbPicker.addEventListener('input', () => {
+        updatePickerReadout();
+        syncControls(false);
+      });
+
+      clearBtn.addEventListener('click', clearCurrentMode);
+
+      copyBtn.addEventListener('click', async () => {
+        const text = toTextGrid();
+        try {
+          await navigator.clipboard.writeText(text);
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => { copyBtn.textContent = 'Copy Text Grid'; }, 900);
+        } catch (_) {
+          copyBtn.textContent = 'Copy failed';
+          setTimeout(() => { copyBtn.textContent = 'Copy Text Grid'; }, 1200);
+        }
+      });
+
+      cnn.kernelSelect.addEventListener('change', () => {
+        renderKernelGrid();
+        scheduleCnnAnalyze();
+      });
+
+      function setCnnOpen(open) {
+        appShell.classList.toggle('cnn-open', open);
+        cnnToggleDock.textContent = open ? 'Hide CNN Panel' : 'Open CNN Panel';
+      }
+
+      cnnToggleDock.addEventListener('click', () => {
+        const open = !appShell.classList.contains('cnn-open');
+        setCnnOpen(open);
+      });
+
+      cnnCloseBtn.addEventListener('click', () => setCnnOpen(false));
+
+      /* init */
+      updatePickerReadout();
+      syncControls(true);
+      renderKernelGrid();
+      scheduleCnnAnalyze();
+      setCnnOpen(false);
+    })();
+  </script>
+</body>
+</html>
