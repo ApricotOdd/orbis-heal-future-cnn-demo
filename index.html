@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixel Drawer + CNN Analyzer</title>
+  <meta name="description" content="Workshop demo: image-to-number conversion and introductory untrained CNN visualizer." />
+  <style>
+    :root {
+      --bg-base: #c9c9c9;
+      --bg-stripe: #c3c3c3;
+      --panel-bg: #efefef;
+      --title-blue: #003c74;
+      --text: #111111;
+      --muted: #2d2d2d;
+      --border-dark: #6b6b6b;
+      --border-mid: #8f8f8f;
+      --border-light: #ffffff;
+      --border-shadow: #3f3f3f;
+      --button-face: #dcdcdc;
+      --button-face-hover: #e4e4e4;
+      --danger-bg: #f1e6cc;
+      --danger-border: #8a6e2f;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      color: var(--text);
+      font-family: Tahoma, Verdana, Arial, sans-serif;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          var(--bg-base) 0px,
+          var(--bg-base) 2px,
+          var(--bg-stripe) 2px,
+          var(--bg-stripe) 4px
+        );
+    }
+
+    .app {
+      max-width: 1100px;
+      margin: 10px auto;
+      padding: 8px;
+    }
+
+    /* Generic window look */
+    .window {
+      border: 1px solid var(--border-shadow);
+      background: var(--panel-bg);
+      box-shadow:
+        inset 1px 1px 0 var(--border-light),
+        inset -1px -1px 0 var(--border-mid);
+      margin-bottom: 10px;
+    }
+
+    .titlebar {
+      background: linear-gradient(to right, #003c74, #1d5f9e);
+      color: #fff;
+      border-bottom: 1px solid #002d57;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 5px 8px;
+      letter-spacing: 0.2px;
+      user-select: none;
+    }
+
+    .content {
+      padding: 10px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .content p {
+      margin: 0 0 8px;
+    }
+
+    .content ul {
+      margin: 6px 0 0 18px;
+      padding: 0;
+    }
+
+    .content li {
+      margin: 4px 0;
+    }
+
+    .mono {
+      font-family: "Courier New", Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 10px;
+    }
+
+    .notice {
+      border: 1px solid var(--danger-border);
+      background: var(--danger-bg);
+      padding: 8px;
+      margin-top: 10px;
+      box-shadow: inset 1px 1px 0 #fff7df;
+      font-size: 12.5px;
+    }
+
+    .controls {
+      display: grid;
+      gap: 8px;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .label {
+      font-size: 12px;
+      color: var(--muted);
+      min-width: 58px;
+    }
+
+    /* Old-school beveled button */
+    .btn {
+      -webkit-appearance: none;
+      appearance: none;
+      border: 1px solid var(--border-dark);
+      background: var(--button-face);
+      color: #111;
+      padding: 5px 10px;
+      border-radius: 0;
+      cursor: pointer;
+      font: 12px Tahoma, Verdana, Arial, sans-serif;
+      box-shadow:
+        inset 1px 1px 0 var(--border-light),
+        inset -1px -1px 0 var(--border-mid);
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn:hover {
+      background: var(--button-face-hover);
+    }
+
+    .btn:active {
+      box-shadow:
+        inset 1px 1px 0 var(--border-mid),
+        inset -1px -1px 0 var(--border-light);
+      transform: translate(1px, 1px);
+    }
+
+    .btn[disabled] {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .status {
+      border: 1px solid var(--border-dark);
+      background: #f6f6f6;
+      padding: 6px;
+      min-height: 28px;
+      box-shadow: inset 1px 1px 0 #fff;
+      font-size: 12px;
+    }
+
+    .footer-window .content {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 12px;
+    }
+
+    .sep {
+      border-top: 1px solid #b7b7b7;
+      border-bottom: 1px solid #ffffff;
+      margin: 8px 0;
+      height: 0;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="window">
+      <div class="titlebar">Pixel Drawer 32x32 + CNN Analyzer :: Launcher Panel</div>
+      <div class="content">
+        <p><strong>Welcome.</strong> This is the combined demo entry point for mobile and desktop layouts.</p>
+      </div>
+    </section>
+
+    <section class="layout">
+      <article class="window">
+        <div class="titlebar">Introduction Panel</div>
+        <div class="content">
+          <p>
+            This is only for demonstration purposes; it is not a professionally put together site.
+          </p>
+          <p>
+            This content is used for workshops hosted in secondary schools, as a project for the
+            <strong>Orbis Future Vision Leader Campaign 2025/26: Heal the Future programme</strong>.
+          </p>
+
+          <div class="sep"></div>
+
+          <p>This website demonstrates:</p>
+          <ul>
+            <li>How images are processed into numbers (pixel/channel values).</li>
+            <li>A very introductory CNN demonstration that is <strong>UNTRAINED</strong>.</li>
+            <li>How kernels (filters) can be designed to detect specific levels of features.</li>
+          </ul>
+
+          <div class="notice">
+            Have fun, and please don’t roast me if you found any inaccuracies 🙂
+          </div>
+        </div>
+      </article>
+
+      <aside class="window">
+        <div class="titlebar">Controls Panel</div>
+        <div class="content controls">
+          <div class="row">
+            <span class="label">Preview:</span>
+            <span class="mono">Auto detect device / screen width</span>
+          </div>
+
+          <div class="row">
+            <a class="btn" href="./mobile/index.html">Open Mobile</a>
+            <a class="btn" href="./desktop/index.html">Open Desktop</a>
+            <button id="cancelBtn" class="btn" type="button">Cancel Auto</button>
+          </div>
+
+          <div class="status mono" id="status">Status: Initializing...</div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="window footer-window">
+      <div class="titlebar">Info Panel</div>
+      <div class="content">
+        <span>Classic UI mode enabled</span>
+        <span class="mono">Recommended: Chrome / Edge / Safari (latest)</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var statusEl = document.getElementById("status");
+      var cancelBtn = document.getElementById("cancelBtn");
+      var canceled = false;
+
+      cancelBtn.addEventListener("click", function () {
+        canceled = true;
+        cancelBtn.disabled = true;
+        statusEl.textContent = "Status: Auto redirect canceled. Choose layout manually.";
+      });
+
+      var isMobile =
+        window.matchMedia("(max-width: 900px)").matches ||
+        ("ontouchstart" in window && window.matchMedia("(max-width: 1100px)").matches);
+
+      var target = isMobile ? "./mobile/index.html" : "./desktop/index.html";
+      var label = isMobile ? "mobile" : "desktop";
+      var countdown = 60;
+
+      statusEl.textContent = "Status: Opening " + label + " layout in " + countdown + "s...";
+
+      var t = setInterval(function () {
+        if (canceled) {
+          clearInterval(t);
+          return;
+        }
+
+        countdown -= 1;
+        if (countdown <= 0) {
+          clearInterval(t);
+          window.location.href = target;
+          return;
+        }
+
+        statusEl.textContent = "Status: Opening " + label + " layout in " + countdown + "s...";
+      }, 1000);
+    })();
+  </script>
+</body>
+</html>
