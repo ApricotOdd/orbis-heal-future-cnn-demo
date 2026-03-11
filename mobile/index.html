@@ -73,7 +73,14 @@
       display:flex;
       justify-content:flex-end;
       align-items:center;
+      gap:8px;
       min-height:42px;
+    }
+    .color-btn{
+      position:relative;
+      width:34px;
+      height:34px;
+      flex:0 0 auto;
     }
     #colorSwatch{
       width:34px;height:34px;border-radius:999px;
@@ -84,7 +91,7 @@
     }
     #colorInput{
       position:absolute;
-      right:0;
+      inset:0;
       width:34px;
       height:34px;
       opacity:0;
@@ -92,6 +99,22 @@
       border:none;
       padding:0;
       margin:0;
+    }
+    #resetBtn{
+      height:34px;
+      padding:0 10px;
+      border:2px solid var(--line);
+      border-radius:10px;
+      background:#fff;
+      color:var(--ink);
+      font:inherit;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 2px 0 #111827;
+    }
+    #resetBtn:active{
+      transform:translateY(1px);
+      box-shadow:0 1px 0 #111827;
     }
 
     .dock{
@@ -258,7 +281,7 @@
       <article class="panel">
         <div class="panel-body">
           <div class="controls">
-            <!-- Row 1: mode + color -->
+            <!-- Row 1: mode + color/reset -->
             <div class="controls-row">
               <div class="control">
                 <label for="modeSel">Mode</label>
@@ -268,10 +291,13 @@
                 </select>
               </div>
               <div class="control" id="colorControl">
-                <label for="colorInput">Color</label>
+                <label id="colorLabel" for="colorInput">Color / Reset</label>
                 <div class="color-pick">
-                  <div id="colorSwatch"></div>
-                  <input id="colorInput" type="color" value="#ff00ff">
+                  <div class="color-btn" id="colorBtnWrap" aria-label="Color picker">
+                    <div id="colorSwatch"></div>
+                    <input id="colorInput" type="color" value="#ff00ff">
+                  </div>
+                  <button id="resetBtn" type="button" title="Clear drawing">Reset</button>
                 </div>
               </div>
             </div>
@@ -428,6 +454,9 @@
     const colorControl = document.getElementById('colorControl');
     const colorInput = document.getElementById('colorInput');
     const colorSwatch = document.getElementById('colorSwatch');
+    const colorBtnWrap = document.getElementById('colorBtnWrap');
+    const colorLabel = document.getElementById('colorLabel');
+    const resetBtn = document.getElementById('resetBtn');
 
     const openChannelBtn = document.getElementById('openChannelBtn');
     const openCnnBtn = document.getElementById('openCnnBtn');
@@ -508,10 +537,30 @@
     function updateUI(){
       softSizeV.textContent = softSize.value;
       strengthV.textContent = strength.value;
+
       const rgbMode = modeSel.value === 'rgb';
-      colorControl.style.visibility = rgbMode ? 'visible' : 'hidden';
-      colorControl.style.pointerEvents = rgbMode ? 'auto' : 'none';
+
+      // Keep control visible in all modes so Reset is always accessible
+      colorControl.style.visibility = 'visible';
+      colorControl.style.pointerEvents = 'auto';
+
+      // Hide only color picker in grayscale mode
+      colorBtnWrap.style.display = rgbMode ? 'block' : 'none';
+
+      if (colorLabel) {
+        colorLabel.textContent = rgbMode ? 'Color / Reset' : 'Reset';
+      }
+
       colorSwatch.style.background = `rgb(${state.rgbColor.r},${state.rgbColor.g},${state.rgbColor.b})`;
+    }
+
+    // ===== reset =====
+    function resetDrawing(){
+      R.fill(0);
+      G.fill(0);
+      B.fill(0);
+      scheduleDraw();
+      flushHeavyNow();
     }
 
     // ===== drawing =====
@@ -852,6 +901,8 @@
       updateUI();
     });
 
+    resetBtn.addEventListener('click', resetDrawing);
+
     [modeSel, softSize, strength].forEach(el=>{
       el.addEventListener('input', ()=>{
         updateUI();
@@ -1023,6 +1074,4 @@
     closeSheet('channel');
     closeSheet('cnn');
   </script>
-
-
 </body></html>
