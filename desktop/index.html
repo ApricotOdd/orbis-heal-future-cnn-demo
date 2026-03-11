@@ -243,25 +243,60 @@
       background: #000;
       color: #e8e8e8;
       text-align: center;
-      padding: 0 1px;
-      white-space: nowrap;
+      padding: 0;
+      white-space: normal;
       overflow: hidden;
     }
 
-    .mcell.view-rgb,
+    .mcell.view-r,
+    .mcell.view-g,
+    .mcell.view-b,
     .mcell.view-rg,
     .mcell.view-rb,
-    .mcell.view-gb {
+    .mcell.view-gb,
+    .mcell.view-gray {
       font-size: 6px;
+      opacity: 0.9;
+    }
+
+    .mcell.view-rgb {
+      font-size: 6px;
+    }
+
+    .mcell .rgb-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 0.86;
+      opacity: 0.72;
+      transform: translateY(0.5px);
+    }
+
+    .mcell .rgb-stack span {
+      display: block;
     }
 
     @media (min-width: 1200px) {
       .mcell { font-size: 8px; }
-      .mcell.view-rgb,
+
+      .mcell.view-r,
+      .mcell.view-g,
+      .mcell.view-b,
       .mcell.view-rg,
       .mcell.view-rb,
-      .mcell.view-gb {
+      .mcell.view-gb,
+      .mcell.view-gray {
         font-size: 7px;
+      }
+
+      .mcell.view-rgb {
+        font-size: 7px;
+      }
+
+      .mcell .rgb-stack {
+        line-height: 0.9;
+        opacity: 0.78;
       }
     }
 
@@ -947,16 +982,22 @@
           html = `<span class="b">${b}</span>`;
         } else if (view === 'rg') {
           br = r; bg = g;
-          html = `<span class="r">${r}</span>,<span class="g">${g}</span>`;
+          html = `<span class="r">${r}</span> <span class="g">${g}</span>`;
         } else if (view === 'rb') {
           br = r; bb = b;
-          html = `<span class="r">${r}</span>,<span class="b">${b}</span>`;
+          html = `<span class="r">${r}</span> <span class="b">${b}</span>`;
         } else if (view === 'gb') {
           bg = g; bb = b;
-          html = `<span class="g">${g}</span>,<span class="b">${b}</span>`;
+          html = `<span class="g">${g}</span> <span class="b">${b}</span>`;
         } else {
           br = r; bg = g; bb = b;
-          html = `<span class="r">${r}</span>,<span class="g">${g}</span>,<span class="b">${b}</span>`;
+          html = `
+            <span class="rgb-stack">
+              <span class="r">${r}</span>
+              <span class="g">${g}</span>
+              <span class="b">${b}</span>
+            </span>
+          `;
         }
 
         cell.style.backgroundColor = `rgb(${br},${bg},${bb})`;
@@ -1265,7 +1306,7 @@
         const h = ctx2d.canvas.height;
         const H = m.length, W = m[0].length;
         const cw = w / W, ch = h / H;
-        const { mn, mx } = minMax(m); // always normalized now
+        const { mn, mx } = minMax(m);
         ctx2d.fillStyle = '#000';
         ctx2d.fillRect(0, 0, w, h);
 
